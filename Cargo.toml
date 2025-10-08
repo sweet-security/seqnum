@@ -1,0 +1,9 @@
+[package]
+name = "seqnum"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/sweet-security/seqnum"
+description = "Serial number arithmetic (wrapping sequenec numbers) for rust"
+
+[dependencies]
