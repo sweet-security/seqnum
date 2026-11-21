@@ -1,5 +1,23 @@
+//! # Serial Number Arithmetics
+//!
+//! This simple (zero deps) crate provides `SequenceInt`, a wrapper around `u8`/`u16`/`u32`/`u64`
+//! that implements [serial number arithmetic](https://en.wikipedia.org/wiki/Serial_number_arithmetic) (as defined by [RFC 1982](https://datatracker.ietf.org/doc/html/rfc1982)) in rust.
+//! 
+//! This is useful for sequence numbers, like in TCP, where one would want to be able to order packets
+//! even though their sequence numbers wrap around. Taking `u16` for instance, `0xfffe_u16 < 0xffff_u16 <  0_u16`.
+//! 
+//! ```rust
+//! use seqnum::SeqU16;
+//! 
+//! // thiss falls below the mid-point between the two numbers, making 1000 smaller
+//! assert!(SeqU16::from(1000) < SeqU16::from(33000));
+//! 
+//! // this crosses the mid-point between the two numbers, making 1000 greater
+//! assert!(SeqU16::from(1000) > SeqU16::from(34000));
+//! ```
+
 use core::cmp::Ordering;
-use core::fmt::Debug;
+use core::fmt::{self, Debug, Display};
 use core::ops::{Add, Sub};
 
 mod seal {
@@ -10,7 +28,7 @@ mod seal {
     impl Sealed for u64 {}
 }
 
-pub trait UInt: seal::Sealed + Copy + Clone + Debug + PartialEq + Eq + Ord {
+pub trait UInt: seal::Sealed + Copy + Clone + Display + PartialEq + Eq + Ord {
     const BITS: u32;
     const MAX: Self;
     const ZERO: Self;
@@ -55,7 +73,7 @@ impl_uint!(u16);
 impl_uint!(u32);
 impl_uint!(u64);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct SequenceInt<T, const BITS: u8>(pub T)
 where
@@ -186,6 +204,28 @@ where
     }
 }
 
+impl<T, const BITS: u8> fmt::Debug for SequenceInt<T, BITS>
+where
+    T: UInt + Debug,
+{
+
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
+}
+
+impl<T, const BITS: u8> fmt::Display for SequenceInt<T, BITS>
+where
+    T: UInt + Display,
+{
+
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
 // A few common widths
 pub type SeqU8 = SequenceInt<u8, 8>;
 pub type SeqU16 = SequenceInt<u16, 16>;
@@ -236,4 +276,13 @@ fn test_serial_ints() {
 
     assert!(SeqU16::from(1000) < SeqU16::from(33000));
     assert!(SeqU16::from(1000) > SeqU16::from(34000));
+}
+
+#[test]
+fn test_fmt() {
+
+    let n = SeqU16::from(1);
+    println!("{n} {n:?}");
+    let n = SeqU24::from(0).sub(1);
+    println!("{n} {n:?}");
 }
